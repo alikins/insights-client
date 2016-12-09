@@ -514,18 +514,17 @@ class InsightsConnection(object):
                 "See %s for more information", constants.default_log_file)
             logger.error(
                 "Could not register system, running configuration test")
-            logger.exception(e)
+            logger.debug('Exception: ', exc_info=True)
             self.test_connection(1)
 
         except requests.ConnectionError as e:
-            logger.debug(e)
             logger.error(
                 "ERROR: Could not determine branch information, exiting!")
             logger.error(
                 "See %s for more information", constants.default_log_file)
             logger.error(
                 "Could not register system, running configuration test")
-            logger.exception(e)
+            logger.debug('Exception:', exc_info=True)
             self.test_connection(1)
 
         data = {'machine_id': machine_id,
