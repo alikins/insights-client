@@ -507,13 +507,14 @@ class InsightsConnection(object):
             remote_branch = branch_info['remote_branch']
             remote_leaf = branch_info['remote_leaf']
 
-        except LookupError:
+        except LookupError as e:
             logger.error(
                 "ERROR: Could not determine branch information, exiting!")
             logger.error(
                 "See %s for more information", constants.default_log_file)
             logger.error(
                 "Could not register system, running configuration test")
+            logger.exception(e)
             self.test_connection(1)
 
         except requests.ConnectionError as e:
@@ -524,6 +525,7 @@ class InsightsConnection(object):
                 "See %s for more information", constants.default_log_file)
             logger.error(
                 "Could not register system, running configuration test")
+            logger.exception(e)
             self.test_connection(1)
 
         data = {'machine_id': machine_id,

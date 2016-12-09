@@ -71,21 +71,30 @@ def set_up_logging():
 
     # Send anything INFO+ to stdout and log
     stdout_handler = logging.StreamHandler(sys.stdout)
+    STDOUT_LOG_FORMAT = "STDOUT: %(levelname)s %(module)s %(message)s"
+    stdout_formatter = logging.Formatter(STDOUT_LOG_FORMAT)
+    stdout_handler.setFormatter(stdout_formatter)
     stderr_handler = logging.StreamHandler(sys.stderr)
     stderr_handler.setLevel(logging.ERROR)
-    logging.root.addHandler(stderr_handler)
+    STDERR_LOG_FORMAT = "STDERR: %(levelname)s %(module)s %(message)s"
+    stderr_formatter = logging.Formatter(STDERR_LOG_FORMAT)
+    stderr_handler.setFormatter(stderr_formatter)
+
+    insights_logger = logging.getLogger(__name__)
+    insights_logger.addHandler(stderr_handler)
+
     if not InsightsClient.options.verbose:
         stdout_handler.setLevel(logging.INFO)
     if InsightsClient.options.quiet:
         stdout_handler.setLevel(logging.ERROR)
     if not InsightsClient.options.silent:
-        logging.root.addHandler(stdout_handler)
+        insights_logger.addHandler(stdout_handler)
 
-    logging.root.addHandler(handler)
+    insights_logger.addHandler(handler)
 
     formatter = logging.Formatter(LOG_FORMAT)
     handler.setFormatter(formatter)
-    logging.root.setLevel(logging.WARNING)
+    handler.setLevel(logging.WARNING)
     if InsightsClient.options.verbose:
         config_level = 'DEBUG'
     else:
@@ -97,9 +106,24 @@ def set_up_logging():
         print "Invalid log level %s, defaulting to DEBUG" % config_level
         init_log_level = logging.getLevelName("DEBUG")
 
-    logger.setLevel(init_log_level)
-    logging.root.setLevel(init_log_level)
-    logger.debug("Logging initialized")
+    stdout_handler.setLevel(init_log_level)
+    handler.setLevel(init_log_level)
+
+    # Get the root logger and add a handler so we can capture log events
+    # from all loggers setup by any imported module (for ex, requests and urllib3)
+    # Note this doesn't add the stdout_handler to the root logger, so log events that
+    # are not from 'insights_client' will only log to file.
+    root_logger = logging.getLogger()
+
+    # May want to be more specific on which external loggers we care about, or possibly only
+    # change it if init_log_level is DEBUG
+    root_logger.setLevel(init_log_level)
+    root_logger.addHandler(handler)
+    root_logger.addHandler(stdout_handler)
+    root_logger.addHandler(stderr_handler)
+    root_logger.error('root error')
+    root_logger.debug('root debug')
+    insights_logger.error('insights error')
     return handler
 
 
@@ -658,6 +682,7 @@ def _main():
     logger.debug('invoked with args: %s', InsightsClient.options)
     logger.debug("Version: " + constants.version)
 
+    import logging_tree; logging_tree.printout()
     # Handle all the options
     handle_startup()
 
