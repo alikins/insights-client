@@ -44,9 +44,25 @@ from containers import (open_image,
 from client_config import InsightsClient, set_up_options, parse_config_file
 
 __author__ = 'Jeremy Crafts <jcrafts@redhat.com>, Dan Varga <dvarga@redhat.com>'
-LOG_FORMAT = ("%(asctime)s %(levelname)s %(message)s")
+LOG_FORMAT = ("%(asctime)s %(levelname)s %(name)s - %(message)s")
 APP_NAME = constants.app_name
 logger = logging.getLogger(__name__)
+
+
+class StdoutLoggingFilter(object):
+    '''Filter out any log records that are WARNING or below.
+
+    Allows a stdout_handler and a stderr_handler that dont log dupes.
+    INFO and DEBUG go to stdout, WARNING, ERROR, CRITICAL go to stderr'''
+
+    def __init__(self, name=None):
+        self.name = name or ""
+        self.min_levelno = logging.INFO
+
+    def filter(self, record):
+        if record.levelno <= self.min_levelno:
+            return True
+        return False
 
 
 def set_up_logging():
@@ -69,17 +85,37 @@ def set_up_logging():
     if InsightsClient.options.to_stdout and not InsightsClient.options.verbose:
         InsightsClient.options.quiet = True
 
+    CONSOLE_LOG_FORMAT = "%(asctime)s %(levelname)s: %(message)s"
     # Send anything INFO+ to stdout and log
     stdout_handler = logging.StreamHandler(sys.stdout)
-    STDOUT_LOG_FORMAT = "STDOUT: %(levelname)s %(module)s %(message)s"
-    stdout_formatter = logging.Formatter(STDOUT_LOG_FORMAT)
+    stdout_formatter = logging.Formatter(CONSOLE_LOG_FORMAT,
+                                         datefmt='%m-%d %H:%M:%S')
     stdout_handler.setFormatter(stdout_formatter)
+    stdout_filter = StdoutLoggingFilter()
+    stdout_handler.addFilter(stdout_filter)
+
+    # Send WARNING/ERROR/CRITICAL to stderr
     stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.setLevel(logging.ERROR)
-    STDERR_LOG_FORMAT = "STDERR: %(levelname)s %(module)s %(message)s"
-    stderr_formatter = logging.Formatter(STDERR_LOG_FORMAT)
+    stderr_handler.setLevel(logging.WARNING)
+    stderr_formatter = logging.Formatter(CONSOLE_LOG_FORMAT,
+                                         datefmt='%m-%d %H:%M:%S')
     stderr_handler.setFormatter(stderr_formatter)
 
+    # use stdout_handler for soscleaner console logging
+    # Note the logger name is in a different name space (vs insights_client.*)
+    # Could use a different handle if we want different formats for debug/info
+    soscleaner_console_logger = logging.getLogger('console_insights_client.soscleaner')
+
+    sos_stdout_handler = logging.StreamHandler(sys.stdout)
+    sos_stdout_formatter = logging.Formatter(CONSOLE_LOG_FORMAT,
+                                             datefmt='%m-%d %H:%M:%S')
+    sos_stdout_handler.setFormatter(sos_stdout_formatter)
+    sos_stdout_filter = StdoutLoggingFilter()
+    sos_stdout_handler.addFilter(sos_stdout_filter)
+    soscleaner_console_logger.addHandler(sos_stdout_handler)
+    soscleaner_console_logger.addHandler(stderr_handler)
+
+    # base logger for insights_client module
     insights_logger = logging.getLogger(__name__)
     insights_logger.addHandler(stderr_handler)
 
@@ -113,17 +149,24 @@ def set_up_logging():
     # from all loggers setup by any imported module (for ex, requests and urllib3)
     # Note this doesn't add the stdout_handler to the root logger, so log events that
     # are not from 'insights_client' will only log to file.
-    root_logger = logging.getLogger()
+    root_logger = logging.getLogger('')
 
     # May want to be more specific on which external loggers we care about, or possibly only
     # change it if init_log_level is DEBUG
     root_logger.setLevel(init_log_level)
-    root_logger.addHandler(handler)
-    root_logger.addHandler(stdout_handler)
-    root_logger.addHandler(stderr_handler)
+    #root_logger.propagate = True
+    null_handler = logging.NullHandler()
+    root_logger.addHandler(null_handler)
     root_logger.error('root error')
+    root_logger.warning('root warning')
+    root_logger.critical('root critical')
+    root_logger.info('root info')
     root_logger.debug('root debug')
     insights_logger.error('insights error')
+    insights_logger.warning('insights warning')
+    insights_logger.critical('ins critical')
+    insights_logger.info('ins info')
+    insights_logger.debug('ins debug')
     return handler
 
 

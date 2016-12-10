@@ -37,8 +37,8 @@ URLLIB3_LOGGER.setLevel(logging.WARNING)
 if os.environ.get('INSIGHTS_DEBUG_HTTP'):
     import httplib
     httplib.HTTPConnection.debuglevel = 1
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
+#    logging.basicConfig()
+#    logging.getLogger().setLevel(logging.DEBUG)
     requests_log = logging.getLogger("urllib3")
     requests_log.setLevel(logging.DEBUG)
     requests_log.propagate = True

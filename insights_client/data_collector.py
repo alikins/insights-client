@@ -19,11 +19,11 @@ APP_NAME = constants.app_name
 logger = logging.getLogger(__name__)
 
 # python 2.7
-SOSCLEANER_LOGGER = logging.getLogger('soscleaner')
-SOSCLEANER_LOGGER.setLevel(logging.ERROR)
+#SOSCLEANER_LOGGER = logging.getLogger('soscleaner')
+#SOSCLEANER_LOGGER.setLevel(logging.ERROR)
 # python 2.6
-SOSCLEANER_LOGGER = logging.getLogger('insights-client.soscleaner')
-SOSCLEANER_LOGGER.setLevel(logging.ERROR)
+#SOSCLEANER_LOGGER = logging.getLogger('insights-client.soscleaner')
+#SOSCLEANER_LOGGER.setLevel(logging.ERROR)
 
 
 class DataCollector(object):
@@ -254,7 +254,7 @@ class DataCollector(object):
         """
         self._write_uploader_log(conf)
         if InsightsClient.config.getboolean(APP_NAME, "obfuscate"):
-            cleaner = SOSCleaner(quiet=True)
+            cleaner = SOSCleaner()
             clean_opts = CleanOptions(self.archive.tmp_dir, rm_conf)
             fresh = cleaner.clean_report(clean_opts, self.archive.archive_dir)
             if clean_opts.keyword_file is not None:
